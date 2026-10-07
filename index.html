@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Random Word</title>
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --card: #ffffff;
+    --text: #1f2328;
+    --muted: #6b6f76;
+    --accent: #3b5bdb;
+    --accent-hover: #2f4ac0;
+    --line: #e4e2dc;
+    --soft: #eef1fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16181d;
+      --card: #20232a;
+      --text: #e8e9ec;
+      --muted: #9aa0a8;
+      --accent: #6c8cff;
+      --accent-hover: #8aa3ff;
+      --line: #33373f;
+      --soft: #282d3a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16181d;
+    --card: #20232a;
+    --text: #e8e9ec;
+    --muted: #9aa0a8;
+    --accent: #6c8cff;
+    --accent-hover: #8aa3ff;
+    --line: #33373f;
+    --soft: #282d3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px 16px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .card {
+    width: 100%;
+    max-width: 640px;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 40px 36px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    text-align: center;
+  }
+  .label {
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 12px;
+  }
+  .word {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2.2rem, 7vw, 3.4rem);
+    margin: 0;
+    word-break: break-word;
+  }
+  .pos {
+    font-style: italic;
+    color: var(--accent);
+    margin: 8px 0 20px;
+  }
+  .meaning {
+    font-size: 1.15rem;
+    line-height: 1.6;
+    margin: 0 0 16px;
+  }
+  .example {
+    color: var(--muted);
+    font-style: italic;
+    line-height: 1.5;
+    margin: 0 0 32px;
+  }
+  button {
+    font: inherit;
+    font-weight: 600;
+    padding: 12px 32px;
+    border: none;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  button:hover { background: var(--accent-hover); }
+  button:active { transform: scale(0.97); }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--accent);
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  button.secondary:hover { background: rgba(59, 91, 219, 0.1); }
+  button.secondary.speaking { background: var(--accent); color: #fff; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ---- Deep-dive sections ---- */
+  .deep {
+    text-align: left;
+    margin-top: 32px;
+    border-top: 1px solid var(--line);
+  }
+  .deep[hidden] { display: none; }
+  .section { padding-top: 24px; }
+  .section h2 {
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  .detail { line-height: 1.65; margin: 0; }
+
+  .build {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .part {
+    background: var(--soft);
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .part b {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .part span { font-size: 0.82rem; color: var(--muted); }
+  .op { color: var(--muted); font-weight: 600; }
+  .result {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+
+  .timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+  .timeline li {
+    position: relative;
+    padding: 0 0 16px 24px;
+  }
+  .timeline li:last-child { padding-bottom: 0; }
+  .timeline li::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 6px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .timeline li:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 18px;
+    bottom: 0;
+    width: 2px;
+    background: var(--line);
+  }
+  .tl-when {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    display: block;
+  }
+  .tl-form {
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-size: 1.1rem;
+  }
+  .tl-gloss { color: var(--muted); }
+  .tl-text { line-height: 1.55; display: block; margin-top: 2px; }
+
+  .fade { animation: fade 0.35s ease; }
+  @keyframes fade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="card">
+    <p class="label">Word of the moment</p>
+    <div id="content">
+      <h1 class="word" id="word"></h1>
+      <p class="pos" id="pos"></p>
+      <p class="meaning" id="meaning"></p>
+      <p class="example" id="example"></p>
+    </div>
+    <div class="actions">
+      <button id="speak" type="button" class="secondary">🔊 Pronounce slowly</button>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+    <div class="deep" id="deep">
+      <section class="section">
+        <h2>In depth</h2>
+        <p class="detail" id="detail"></p>
+      </section>
+      <section class="section">
+        <h2>Root &amp; how it builds up</h2>
+        <div class="build" id="build"></div>
+      </section>
+      <section class="section">
+        <h2>Lineage</h2>
+        <ol class="timeline" id="lineage"></ol>
+      </section>
+      <section class="section">
+        <h2>Through history</h2>
+        <ol class="timeline" id="history"></ol>
+      </section>
+    </div>
+  </main>
+
+<script>
+const WORDS = [
+  ["serendipity", "noun", "The occurrence of fortunate events by chance.", "Finding that old letter was pure serendipity."],
+  ["ephemeral", "adjective", "Lasting for a very short time.", "The beauty of the sunset was ephemeral."],
+  ["ubiquitous", "adjective", "Present, appearing, or found everywhere.", "Smartphones have become ubiquitous."],
+  ["eloquent", "adjective", "Fluent or persuasive in speaking or writing.", "She gave an eloquent speech at the ceremony."],
+  ["resilient", "adjective", "Able to recover quickly from difficulties.", "Children are often remarkably resilient."],
+  ["meticulous", "adjective", "Showing great attention to detail; very careful and precise.", "He kept meticulous records of every expense."],
+  ["candor", "noun", "The quality of being open and honest.", "I appreciated the candor of her feedback."],
+  ["benevolent", "adjective", "Well meaning and kindly.", "A benevolent stranger paid for our coffee."],
+  ["quixotic", "adjective", "Exceedingly idealistic; unrealistic and impractical.", "His quixotic plan was to end traffic forever."],
+  ["lucid", "adjective", "Expressed clearly; easy to understand.", "The textbook offers a lucid explanation of gravity."],
+  ["melancholy", "noun", "A deep, pensive, and long-lasting sadness.", "A sense of melancholy settled over the empty house."],
+  ["pragmatic", "adjective", "Dealing with things sensibly and realistically.", "We need a pragmatic solution, not a perfect one."],
+  ["tenacious", "adjective", "Tending to keep a firm hold; persistent.", "She was tenacious in pursuing her goals."],
+  ["ambiguous", "adjective", "Open to more than one interpretation.", "The ending of the film was deliberately ambiguous."],
+  ["gregarious", "adjective", "Fond of company; sociable.", "He was a gregarious host who loved parties."],
+  ["nostalgia", "noun", "A sentimental longing for the past.", "The old song filled her with nostalgia."],
+  ["paradigm", "noun", "A typical example or pattern of something; a model.", "The discovery caused a paradigm shift in physics."],
+  ["vicarious", "adjective", "Experienced in the imagination through another person's actions.", "She took vicarious pleasure in her son's success."],
+  ["zealous", "adjective", "Having or showing great energy or enthusiasm for a cause.", "The zealous volunteers worked through the night."],
+  ["obsolete", "adjective", "No longer produced or used; out of date.", "Floppy disks are now obsolete."],
+  ["innate", "adjective", "Inborn; natural.", "She has an innate talent for music."],
+  ["mundane", "adjective", "Lacking interest or excitement; dull.", "He longed to escape his mundane routine."],
+  ["eccentric", "adjective", "Unconventional and slightly strange.", "Her eccentric aunt kept twelve parrots."],
+  ["sanguine", "adjective", "Optimistic, especially in a difficult situation.", "He remained sanguine about the team's chances."],
+  ["laconic", "adjective", "Using very few words.", "His laconic reply was simply, \"No.\""],
+  ["ineffable", "adjective", "Too great or extreme to be expressed in words.", "The view from the summit filled them with ineffable joy."],
+  ["petrichor", "noun", "A pleasant smell that accompanies the first rain after dry weather.", "The petrichor drifted in through the open window."],
+  ["sonder", "noun", "The realization that each passerby has a life as vivid and complex as your own.", "Watching the crowded station, she felt a wave of sonder."],
+  ["halcyon", "adjective", "Denoting a period of time in the past that was idyllically happy and peaceful.", "He recalled the halcyon days of his youth."],
+  ["mellifluous", "adjective", "Sweet or musical; pleasant to hear.", "The singer had a mellifluous voice."],
+  ["cacophony", "noun", "A harsh, discordant mixture of sounds.", "A cacophony of car horns filled the street."],
+  ["epiphany", "noun", "A moment of sudden and great revelation or realization.", "He had an epiphany about his career in the shower."],
+  ["juxtapose", "verb", "To place close together for contrasting effect.", "The exhibit juxtaposes modern and ancient art."],
+  ["ostentatious", "adjective", "Designed to impress or attract notice; showy.", "They lived in an ostentatious mansion."],
+  ["procrastinate", "verb", "To delay or postpone action.", "I tend to procrastinate when a task feels overwhelming."],
+  ["reticent", "adjective", "Not revealing one's thoughts or feelings readily.", "She was reticent about her personal life."],
+  ["superfluous", "adjective", "Unnecessary, especially through being more than enough.", "Cut any superfluous words from your essay."],
+  ["verbose", "adjective", "Using more words than needed.", "The report was verbose and hard to follow."],
+  ["wanderlust", "noun", "A strong desire to travel.", "Wanderlust took him across six continents."],
+  ["ameliorate", "verb", "To make something bad or unsatisfactory better.", "New policies helped ameliorate the housing shortage."],
+  ["anomaly", "noun", "Something that deviates from what is standard or expected.", "The warm day in January was an anomaly."],
+  ["cogent", "adjective", "Clear, logical, and convincing.", "She presented a cogent argument for the change."],
+  ["diligent", "adjective", "Having or showing care and conscientiousness in one's work.", "A diligent student reviews notes every day."],
+  ["empathy", "noun", "The ability to understand and share the feelings of another.", "Good nurses show great empathy for patients."],
+  ["frugal", "adjective", "Sparing or economical with money or food.", "They lived a frugal life to save for a house."],
+  ["hubris", "noun", "Excessive pride or self-confidence.", "His hubris led to his downfall."],
+  ["idyllic", "adjective", "Extremely happy, peaceful, or picturesque.", "They spent an idyllic summer by the lake."],
+  ["jubilant", "adjective", "Feeling or expressing great happiness and triumph.", "The jubilant fans poured onto the field."],
+  ["kinetic", "adjective", "Relating to or resulting from motion.", "The sculpture is a kinetic artwork that moves in the wind."],
+  ["luminous", "adjective", "Full of or shedding light; bright or shining.", "The moon was luminous in the clear sky."],
+  ["nebulous", "adjective", "Unclear, vague, or ill-defined.", "The plan was still nebulous at that stage."],
+  ["opulent", "adjective", "Ostentatiously rich and luxurious.", "The hotel lobby was opulent, with gold chandeliers."],
+  ["perennial", "adjective", "Lasting or existing for a long or apparently infinite time.", "Traffic is a perennial problem in the city."],
+  ["quintessential", "adjective", "Representing the most perfect or typical example of something.", "He is the quintessential English gentleman."],
+  ["ruminate", "verb", "To think deeply about something.", "She ruminated on the decision for days."],
+  ["solace", "noun", "Comfort or consolation in a time of distress.", "He found solace in music after the loss."],
+  ["trepidation", "noun", "A feeling of fear or anxiety about something that may happen.", "She opened the letter with trepidation."],
+  ["unfathomable", "adjective", "Incapable of being fully explored or understood.", "The depth of the ocean seemed unfathomable."],
+  ["vivacious", "adjective", "Attractively lively and animated.", "Her vivacious personality lit up the room."],
+  ["whimsical", "adjective", "Playfully quaint or fanciful.", "The book has whimsical illustrations of talking animals."],
+  ["zenith", "noun", "The time at which something is most powerful or successful.", "The empire reached its zenith in the 2nd century."],
+  ["alacrity", "noun", "Brisk and cheerful readiness.", "She accepted the invitation with alacrity."],
+  ["bucolic", "adjective", "Relating to the pleasant aspects of the countryside.", "They painted a bucolic scene of grazing sheep."],
+  ["clandestine", "adjective", "Kept secret or done secretively.", "They held a clandestine meeting at midnight."],
+  ["dichotomy", "noun", "A division or contrast between two things that are opposed.", "There is a dichotomy between theory and practice."],
+  ["enigma", "noun", "A person or thing that is mysterious or difficult to understand.", "The disappearance remains an enigma."],
+  ["fortuitous", "adjective", "Happening by accident or chance, often luckily.", "Their meeting was entirely fortuitous."],
+  ["gratitude", "noun", "The quality of being thankful.", "She expressed her gratitude with a handwritten note."],
+  ["harbinger", "noun", "A person or thing that signals the approach of another.", "The robin is a harbinger of spring."],
+  ["impeccable", "adjective", "In accordance with the highest standards; faultless.", "He has impeccable manners."],
+  ["labyrinth", "noun", "A complicated irregular network of passages; a maze.", "The old town is a labyrinth of narrow streets."],
+  ["magnanimous", "adjective", "Generous or forgiving, especially toward a rival.", "She was magnanimous in victory."],
+  ["nonchalant", "adjective", "Feeling or appearing casually calm and relaxed.", "He gave a nonchalant shrug."],
+  ["oblivious", "adjective", "Not aware of what is happening around one.", "He was oblivious to the noise around him."],
+  ["plethora", "noun", "A large or excessive amount of something.", "The menu offers a plethora of options."],
+  ["serene", "adjective", "Calm, peaceful, and untroubled.", "The lake was serene at dawn."],
+  ["tranquil", "adjective", "Free from disturbance; calm.", "They found a tranquil spot in the garden."],
+  ["voracious", "adjective", "Wanting or devouring great quantities.", "She is a voracious reader."],
+];
+
+// Detailed meaning, building blocks, lineage and historical usage for each word.
+// parts:   [morpheme, what it contributes]
+// lineage: [language / period, form, gloss]
+// history: [when, what happened]
+const DETAILS = {
+  serendipity: {
+    detail: "Serendipity is not just luck: it is the knack of noticing something valuable you were not looking for. The word implies both chance and the alertness to recognise a happy accident when it happens.",
+    parts: [["Serendip", "old name for Sri Lanka"], ["-ity", "forms a noun of state or quality"]],
+    lineage: [
+      ["Sanskrit", "Siṃhaladvīpa", "island of the Sinhala people"],
+      ["Arabic / Persian", "Sarandīb / Sarandīp", "Sri Lanka"],
+      ["Italian, 1557", "Serendippo", "in a tale of three travelling princes"],
+      ["English, 1754", "serendipity", "coined by Horace Walpole"],
+    ],
+    history: [
+      ["1557", "Michele Tramezzino publishes “The Travels of the Three Young Sons of the King of Serendippo”, whose heroes keep discovering things by accident and sharp observation."],
+      ["1754", "Horace Walpole coins “serendipity” in a letter to Horace Mann, citing that fairy tale."],
+      ["20th century", "The word becomes common through science writing about accidental discoveries such as penicillin (1928), and is often voted one of the best-loved words in English."],
+    ],
+  },
+  ephemeral: {
+    detail: "Ephemeral describes things that exist only briefly: a mood, a trend, a soap bubble. It often carries a note of fragile beauty or the sense that something should be valued because it will not last.",
+    parts: [["epi-", "upon, for"], ["hēmera", "day (Greek)"], ["-al", "relating to"]],
+    lineage: [
+      ["Ancient Greek", "ephēmeros", "lasting only a day"],
+      ["Medieval Latin", "ephemerus", "short-lived"],
+      ["English, 1560s", "ephemeral", "first used of fevers"],
+    ],
+    history: [
+      ["1560s", "Used in medicine for a fever that lasts a single day."],
+      ["17th–18th c.", "Naturalists use it for short-lived insects such as mayflies, whose order is still called Ephemeroptera."],
+      ["Modern", "Now used for anything fleeting. Collectors call throwaway printed items such as tickets and posters “ephemera”."],
+    ],
+  },
+  ubiquitous: {
+    detail: "Ubiquitous means present everywhere at once, or so common that it seems to be. It is often used, with a hint of exaggeration, for technology, brands or habits you simply cannot escape.",
+    parts: [["ubi", "where (Latin)"], ["-que", "-ever, any"], ["-itous", "having the quality of"]],
+    lineage: [
+      ["Latin", "ubique", "everywhere"],
+      ["Modern Latin, 16th c.", "ubiquitas", "the state of being everywhere"],
+      ["English, 1570s", "ubiquity", ""],
+      ["English, 1830s", "ubiquitous", ""],
+    ],
+    history: [
+      ["16th century", "“Ubiquity” enters English through religious debates about whether Christ's body could be present everywhere at once. Its supporters were nicknamed “Ubiquitarians”."],
+      ["1830s", "The adjective “ubiquitous” appears and soon loses its religious meaning."],
+      ["Today", "A favourite word for technology, as in “ubiquitous computing”, a term coined by Mark Weiser around 1988."],
+    ],
+  },
+  eloquent: {
+    detail: "An eloquent speaker or writer expresses ideas fluently, gracefully and persuasively. The word can also describe things that convey meaning without words, as in “an eloquent silence” or “an eloquent gesture”.",
+    parts: [["e- (ex-)", "out"], ["loqu-", "speak (Latin loqui)"], ["-ent", "doing the action"]],
+    lineage: [
+      ["Latin", "loqui", "to speak"],
+      ["Latin", "eloquens", "speaking out"],
+      ["Old French", "eloquent", ""],
+      ["English, late 14th c.", "eloquent", ""],
+    ],
+    history: [
+      ["Classical Rome", "Cicero makes eloquentia, persuasive speech built on wisdom, the ideal of the educated citizen."],
+      ["Late 1300s", "Enters English as Renaissance schools make rhetoric a core subject."],
+      ["Relatives", "The same root gives loquacious, colloquial, soliloquy and ventriloquist."],
+    ],
+  },
+  resilient: {
+    detail: "Resilient means able to spring back after being bent, stretched or knocked down. It is used of materials, people, communities and systems that absorb a shock and recover their shape or strength.",
+    parts: [["re-", "back"], ["sil- (salire)", "to leap, jump"], ["-ient", "doing the action"]],
+    lineage: [
+      ["Latin", "salire", "to jump"],
+      ["Latin", "resilire", "to leap back, rebound"],
+      ["English, 1640s", "resilient", "rebounding"],
+    ],
+    history: [
+      ["17th century", "Used literally of things that bounce or spring back."],
+      ["19th century", "Engineers use “resilience” for how much energy a material such as timber can absorb without breaking."],
+      ["Late 20th c.", "Psychologists, notably Emmy Werner in her decades-long Kauai study, apply it to people who thrive despite hardship. The everyday modern sense follows."],
+    ],
+  },
+  meticulous: {
+    detail: "Meticulous describes extreme care over small details, with a precision that leaves nothing to chance. It is usually praise, though it can hint at fussiness.",
+    parts: [["metus", "fear (Latin)"], ["-iculous", "full of, inclined to"]],
+    lineage: [
+      ["Latin", "metus", "fear"],
+      ["Latin", "meticulosus", "fearful, timid"],
+      ["English, 1530s", "meticulous", "timid"],
+      ["French influence, 19th c.", "méticuleux", "overly careful"],
+    ],
+    history: [
+      ["1530s", "First meant “fearful” or “timid”, a meaning now obsolete."],
+      ["1820s", "Under the influence of French méticuleux it shifts to “careful about detail”, at first meaning careful out of anxiety."],
+      ["Today", "The fear has faded completely and the word simply means thorough and exact."],
+    ],
+  },
+  candor: {
+    detail: "Candor is frank, open honesty: saying what you really think, even when it is uncomfortable. It suggests sincerity and a lack of hidden motives rather than bluntness for its own sake.",
+    parts: [["cand-", "to shine, be white (Latin candere)"], ["-or", "state or quality"]],
+    lineage: [
+      ["Latin", "candere", "to shine, glow white"],
+      ["Latin", "candor", "dazzling whiteness, purity"],
+      ["English, late 14th c.", "candour / candor", "brilliant whiteness"],
+    ],
+    history: [
+      ["Ancient Rome", "Candidates for office wore a whitened toga (toga candida), which is where the word “candidate” comes from."],
+      ["1600s", "The meaning moves from physical whiteness to purity of mind, then fairness and freedom from bias."],
+      ["1700s onward", "Settles on its modern meaning of openness and frankness. Relatives include candid, candle and incandescent."],
+    ],
+  },
+  benevolent: {
+    detail: "Benevolent describes a genuine wish to do good for others, a kindly disposition shown through generosity and goodwill. It is often used of charities, rulers and organisations as well as people.",
+    parts: [["bene", "well (Latin)"], ["vol-", "wish, will (Latin velle)"], ["-ent", "doing the action"]],
+    lineage: [
+      ["Latin", "bene + velle", "well + to wish"],
+      ["Latin", "benevolens", "wishing well"],
+      ["Old French", "benivolent", ""],
+      ["English, 15th c.", "benevolent", ""],
+    ],
+    history: [
+      ["1470s", "English kings demand “benevolences”, supposedly voluntary gifts that were really forced levies. Parliament outlaws them in 1484."],
+      ["18th century", "Philosophers such as Francis Hutcheson and David Hume put benevolence at the centre of their moral theories."],
+      ["Victorian era", "“Benevolent societies” spread as charitable and mutual-aid groups. The opposite is malevolent (“wishing ill”)."],
+    ],
+  },
+  quixotic: {
+    detail: "Quixotic describes noble but wildly impractical idealism: chasing grand, romantic goals with little regard for reality. It is often affectionate rather than harsh.",
+    parts: [["Quixote", "hero of Cervantes' novel"], ["-ic", "like, in the manner of"]],
+    lineage: [
+      ["Latin", "coxa", "hip"],
+      ["Catalan / Spanish", "cuixot / quijote", "armour for the thigh"],
+      ["Spanish, 1605", "Don Quixote", "Cervantes' would-be knight"],
+      ["English, 18th c.", "quixotic", ""],
+    ],
+    history: [
+      ["1605–1615", "Cervantes publishes Don Quixote, about an elderly gentleman who believes he is a knight and attacks windmills he mistakes for giants."],
+      ["1700s", "English adopts “quixotic” and “quixotism” for impractical, chivalrous idealism."],
+      ["Idiom", "“Tilting at windmills”, fighting imaginary enemies, comes from the same novel."],
+    ],
+  },
+  lucid: {
+    detail: "Lucid means clear, both in expression (easy to follow) and in mind (thinking rationally). In medicine it describes a person who is fully conscious and coherent.",
+    parts: [["luc-", "light (Latin lux, lucere)"], ["-id", "having the quality of"]],
+    lineage: [
+      ["Latin", "lux / lucere", "light / to shine"],
+      ["Latin", "lucidus", "bright, clear"],
+      ["English, 1590s", "lucid", "shining (poetic)"],
+    ],
+    history: [
+      ["16th century", "Law speaks of a “lucid interval”, a period of sanity between bouts of madness."],
+      ["1780s", "The sense “clear to the mind, easily understood” takes hold."],
+      ["1913", "Dutch psychiatrist Frederik van Eeden coins “lucid dream” for a dream in which you know you are dreaming."],
+    ],
+  },
+  melancholy: {
+    detail: "Melancholy is a deep, lingering, reflective sadness, often without a single clear cause. Unlike sharp grief, it can have a wistful, almost beautiful quality and has long been linked with creativity.",
+    parts: [["melan-", "black (Greek melas)"], ["cholē", "bile (Greek)"], ["-y", "condition"]],
+    lineage: [
+      ["Ancient Greek", "melankholia", "black bile"],
+      ["Late Latin", "melancholia", ""],
+      ["Old French", "melancolie", ""],
+      ["Middle English, c.1300", "malencolie", ""],
+    ],
+    history: [
+      ["Antiquity", "Hippocratic and Galenic medicine blames gloom on an excess of “black bile”, one of the four bodily humours."],
+      ["1514 / 1621", "Dürer engraves Melencolia I, and Robert Burton publishes The Anatomy of Melancholy."],
+      ["1819", "Keats's “Ode on Melancholy” makes it a Romantic, almost cherished mood."],
+    ],
+  },
+  pragmatic: {
+    detail: "Pragmatic describes dealing with problems in a practical, results-focused way rather than through theory or ideals. A pragmatic person asks “what works?” and accepts compromise to get things done.",
+    parts: [["pragma", "deed, act (Greek)"], ["-tic", "relating to"]],
+    lineage: [
+      ["Ancient Greek", "prassein → pragma", "to do → a deed"],
+      ["Greek", "pragmatikos", "skilled in business"],
+      ["Latin", "pragmaticus", ""],
+      ["English, 1590s", "pragmatic", "busy, meddlesome"],
+    ],
+    history: [
+      ["1500s–1600s", "Can mean “officious” or “meddling”. A “pragmatic sanction” is a ruler's formal decree, most famously Emperor Charles VI's of 1713."],
+      ["1870s–1900s", "Charles S. Peirce and William James found Pragmatism, the philosophy that ideas are judged by their practical consequences."],
+      ["20th century", "The everyday sense “sensible and realistic” becomes dominant."],
+    ],
+  },
+  tenacious: {
+    detail: "Tenacious means holding on firmly, whether physically (a tenacious grip), mentally (a tenacious memory) or in spirit (refusing to give up). It suggests stubborn persistence in the face of difficulty.",
+    parts: [["ten-", "hold (Latin tenere)"], ["-acious", "inclined to, full of"]],
+    lineage: [
+      ["Latin", "tenere", "to hold"],
+      ["Latin", "tenax", "holding fast, gripping"],
+      ["English, c.1600", "tenacious", ""],
+    ],
+    history: [
+      ["1600s", "Used of sticky substances and of things that grip."],
+      ["1700s", "Extended to memory, opinions and character."],
+      ["Relatives", "The same root gives tenant, tenure, tenet, retain, maintain and contain."],
+    ],
+  },
+  ambiguous: {
+    detail: "Ambiguous describes something open to two or more interpretations, so that the intended meaning is uncertain. It can be accidental (a confusing sentence) or deliberate (a poem or film ending meant to be read in several ways).",
+    parts: [["ambi-", "both, around"], ["ag- (agere)", "to drive, lead"], ["-uous", "having the quality of"]],
+    lineage: [
+      ["Latin", "ambigere", "to wander about, waver, dispute"],
+      ["Latin", "ambiguus", "doubtful, shifting"],
+      ["English, 1520s", "ambiguous", ""],
+    ],
+    history: [
+      ["Classical rhetoric", "Ambiguitas is listed as a fault of style to avoid."],
+      ["1520s", "Enters English during the Renaissance boom in Latin borrowings."],
+      ["1930", "William Empson's Seven Types of Ambiguity treats ambiguity as a source of richness in poetry."],
+    ],
+  },
+  gregarious: {
+    detail: "Gregarious describes someone who loves company and seeks out other people. In biology it describes animals that live in flocks, herds or colonies.",
+    parts: [["greg- (grex)", "flock, herd"], ["-arious", "belonging to"]],
+    lineage: [
+      ["Latin", "grex, gregis", "flock"],
+      ["Latin", "gregarius", "of the flock, common"],
+      ["English, 1660s", "gregarious", "living in flocks"],
+    ],
+    history: [
+      ["Ancient Rome", "A miles gregarius was a common soldier, one of the herd."],
+      ["1660s", "Naturalists use it for herd and flock animals."],
+      ["Late 1700s", "Applied to sociable people. Relatives include congregate, segregate, aggregate and egregious (“standing out from the flock”)."],
+    ],
+  },
+  nostalgia: {
+    detail: "Nostalgia is a bittersweet longing for the past, often an idealised version of it. It mixes warmth for good memories with sadness that those times cannot return.",
+    parts: [["nostos", "homecoming (Greek)"], ["algos", "pain (Greek)"], ["-ia", "condition"]],
+    lineage: [
+      ["German", "Heimweh", "home-ache"],
+      ["Modern Latin, 1688", "nostalgia", "coined by Johannes Hofer"],
+      ["English, 1770s", "nostalgia", "acute homesickness"],
+    ],
+    history: [
+      ["1688", "Swiss medical student Johannes Hofer invents the word for a disease of homesickness he observed in Swiss mercenaries abroad."],
+      ["1860s", "Doctors in the American Civil War still diagnose soldiers with “nostalgia”, sometimes as a cause of death."],
+      ["20th century", "Loses its medical meaning and becomes a sentimental longing for times past."],
+    ],
+  },
+  paradigm: {
+    detail: "A paradigm is a model or pattern that shapes how something is understood or done. In science it means the whole framework of shared assumptions within which a field works.",
+    parts: [["para-", "beside"], ["deigma (deiknynai)", "to show"]],
+    lineage: [
+      ["Ancient Greek", "paradeigma", "pattern, example"],
+      ["Late Latin", "paradigma", ""],
+      ["English, late 15th c.", "paradigm", "an example"],
+    ],
+    history: [
+      ["1500s–1800s", "Mostly used in grammar for a table of a word's forms, like a verb conjugation."],
+      ["1962", "Thomas Kuhn's The Structure of Scientific Revolutions introduces the “paradigm shift”."],
+      ["1990s", "The phrase becomes a famous business buzzword."],
+    ],
+  },
+  vicarious: {
+    detail: "Vicarious describes experiencing something through another person rather than first-hand: the thrill of watching a friend succeed, or living out adventures through a book. It can also mean acting on someone else's behalf.",
+    parts: [["vic- (vicis)", "turn, change, place"], ["-arious", "relating to"]],
+    lineage: [
+      ["Latin", "vicis", "change, turn, stead"],
+      ["Latin", "vicarius", "substitute, deputy"],
+      ["English, 1630s", "vicarious", "acting in another's place"],
+    ],
+    history: [
+      ["1600s", "Used of deputies and substitutes. Theologians speak of Christ's “vicarious sacrifice”."],
+      ["Early 20th c.", "The psychological sense, feeling pleasure or pain through others, becomes common."],
+      ["Relatives", "Vicar (a priest serving in someone's place), vice-president and vicissitude."],
+    ],
+  },
+  zealous: {
+    detail: "Zealous describes fervent, passionate devotion to a cause, belief or task. It can be admiring (zealous volunteers) or a warning, since too much zeal can become fanaticism.",
+    parts: [["zēlos", "ardour, eager rivalry (Greek)"], ["-ous", "full of"]],
+    lineage: [
+      ["Ancient Greek", "zēlos", "zeal, jealousy, emulation"],
+      ["Late Latin", "zelus", ""],
+      ["Medieval Latin", "zelosus", ""],
+      ["English, 1520s", "zealous", ""],
+    ],
+    history: [
+      ["1st century", "The Zealots, a Jewish movement, fight Roman rule in Judea."],
+      ["14th–16th c.", "“Zeal” appears in English Bible translations, and “zealous” follows in the Reformation era."],
+      ["Surprising cousin", "Jealous comes from the same Greek root, through Old French gelos."],
+    ],
+  },
+  obsolete: {
+    detail: "Obsolete describes something that is no longer used because it has been replaced by something newer or better. In biology it describes an organ that has become rudimentary.",
+    parts: [["ob-", "away"], ["solere", "to be accustomed, used to"], ["-ete", "having become"]],
+    lineage: [
+      ["Latin", "obsolescere", "to fall into disuse, wear out"],
+      ["Latin", "obsoletus", "worn out, old"],
+      ["English, 1570s", "obsolete", ""],
+    ],
+    history: [
+      ["1570s", "Used of words and customs that are out of date."],
+      ["19th century", "Biologists describe vestigial organs as “obsolete”."],
+      ["1932", "Bernard London proposes “planned obsolescence”, an idea that later defines consumer culture."],
+    ],
+  },
+  innate: {
+    detail: "Innate describes qualities a person or creature is born with, rather than ones learned through experience. It sits at the heart of the long-running “nature versus nurture” debate.",
+    parts: [["in-", "in"], ["nat- (nasci)", "to be born"], ["-e", "adjective ending"]],
+    lineage: [
+      ["Latin", "nasci → natus", "to be born → born"],
+      ["Latin", "innatus", "inborn"],
+      ["English, early 15th c.", "innate", ""],
+    ],
+    history: [
+      ["1600s", "Descartes argues for innate ideas, and John Locke attacks them in his 1689 Essay, calling the mind a “blank slate”."],
+      ["1960s", "Noam Chomsky argues for an innate human capacity for grammar."],
+      ["Relatives", "Native, nature, nation, prenatal and renaissance."],
+    ],
+  },
+  mundane: {
+    detail: "Mundane today means ordinary, routine and unexciting, the everyday chores of life. Its older meaning is “of this world” as opposed to spiritual or heavenly.",
+    parts: [["mund- (mundus)", "the world"], ["-ane", "belonging to"]],
+    lineage: [
+      ["Latin", "mundus", "world, universe"],
+      ["Late Latin", "mundanus", "worldly"],
+      ["Old French", "mondain", ""],
+      ["English, mid-15th c.", "mundane", "earthly, worldly"],
+    ],
+    history: [
+      ["Middle Ages", "Contrasts the mundane (earthly) with the spiritual or divine."],
+      ["Astrology", "“Mundane astrology” deals with world events rather than individuals."],
+      ["19th–20th c.", "The sense “dull, ordinary, everyday” takes over."],
+    ],
+  },
+  eccentric: {
+    detail: "Eccentric describes someone whose behaviour is unconventional and slightly odd, usually in a harmless or charming way. In geometry and mechanics it means not sharing the same centre.",
+    parts: [["ek-", "out of"], ["kentron", "centre (Greek)"], ["-ic", "relating to"]],
+    lineage: [
+      ["Ancient Greek", "ekkentros", "out of the centre"],
+      ["Medieval Latin", "eccentricus", ""],
+      ["English, late 14th c.", "eccentric", "an astronomical circle"],
+    ],
+    history: [
+      ["Ptolemy (2nd c.)", "Explains planetary motion with orbits whose centres are offset from the Earth: “eccentric” circles."],
+      ["1600s", "Kepler's elliptical orbits are measured by their “eccentricity”, and by the 1680s the word is used of odd people."],
+      ["Victorian era", "The “English eccentric” becomes a beloved cultural type."],
+    ],
+  },
+  sanguine: {
+    detail: "Sanguine means cheerfully optimistic, especially when things look bad. It can also mean blood-red, or a reddish-brown chalk used for drawing.",
+    parts: [["sangu- (sanguis)", "blood"], ["-ine", "of, like"]],
+    lineage: [
+      ["Latin", "sanguis", "blood"],
+      ["Latin", "sanguineus", "of blood, blood-red"],
+      ["Old French", "sanguin", ""],
+      ["English, late 14th c.", "sanguine", "blood-red"],
+    ],
+    history: [
+      ["Medieval medicine", "A “sanguine” temperament, ruled by blood among the four humours, is ruddy, cheerful and hopeful."],
+      ["Renaissance", "Artists such as Leonardo and Michelangelo draw in red “sanguine” chalk."],
+      ["Today", "Survives mainly as “optimistic”. Don't confuse it with sanguinary, which means bloodthirsty."],
+    ],
+  },
+  laconic: {
+    detail: "Laconic describes speech or writing that uses very few words, often to dry, understated or witty effect. A laconic person says a lot by saying little.",
+    parts: [["Lakōn", "a Spartan, from Laconia"], ["-ic", "like, in the manner of"]],
+    lineage: [
+      ["Ancient Greek", "Lakōnikos", "of Laconia (Sparta)"],
+      ["Latin", "Laconicus", ""],
+      ["English, 1580s", "laconic", ""],
+    ],
+    history: [
+      ["Ancient Sparta", "Spartans were famous for brevity. Told by Philip II of Macedon “If I invade Laconia, I will raze Sparta”, they reportedly replied with one word: “If.”"],
+      ["1st–2nd c.", "Plutarch collects their terse replies in Sayings of the Spartans."],
+      ["1580s", "English borrows the word to describe concise speech."],
+    ],
+  },
+  ineffable: {
+    detail: "Ineffable describes something too great, sacred or overwhelming to be put into words. It is used of profound joy, beauty or spiritual experience.",
+    parts: [["in-", "not"], ["ef- (ex-)", "out"], ["fa- (fari)", "to speak"], ["-ble", "able to be"]],
+    lineage: [
+      ["Latin", "fari → effari", "to speak → to utter"],
+      ["Latin", "ineffabilis", "unutterable"],
+      ["Old French", "ineffable", ""],
+      ["English, late 14th c.", "ineffable", ""],
+    ],
+    history: [
+      ["Medieval theology", "Used for the name and nature of God, believed to be beyond human speech."],
+      ["1939", "T. S. Eliot's “The Naming of Cats” plays with it: every cat has a secret name, “ineffable effable effanineffable”."],
+      ["Relatives", "Fable, fate (“that which is spoken”), infant (“not yet speaking”)."],
+    ],
+  },
+  petrichor: {
+    detail: "Petrichor is the earthy scent produced when rain falls on dry ground. It comes from plant oils and a compound called geosmin, made by soil bacteria, released into the air.",
+    parts: [["petra", "stone (Greek)"], ["ichōr", "fluid in the veins of the gods"]],
+    lineage: [
+      ["Ancient Greek", "petra + ichōr", "stone + divine blood"],
+      ["English, 1964", "petrichor", "coined by Bear & Thomas"],
+    ],
+    history: [
+      ["1964", "Australian chemists Isabel Joy Bear and Richard Thomas name and describe the scent in the journal Nature."],
+      ["2015", "MIT researchers film raindrops releasing tiny aerosols that carry the scent into the air."],
+      ["Today", "A popular “beautiful word”, much loved online, describing a smell almost everyone recognises."],
+    ],
+  },
+  sonder: {
+    detail: "Sonder is the sudden awareness that every passing stranger lives a life as vivid and complex as your own, full of ambitions, worries and stories you will never know.",
+    parts: [["sonder", "German: special, apart; French: to probe, sound out"]],
+    lineage: [
+      ["French", "sonder", "to probe depths"],
+      ["German", "sonder-", "special, separate"],
+      ["English, 2009", "sonder", "coined by John Koenig"],
+    ],
+    history: [
+      ["2009", "Writer John Koenig coins the word on his project The Dictionary of Obscure Sorrows, which invents words for emotions without names."],
+      ["2010s", "Spreads widely online through social media and video."],
+      ["2021", "Appears in Koenig's book. It is still a neologism and is not yet in most major dictionaries."],
+    ],
+  },
+  halcyon: {
+    detail: "Halcyon describes a past period remembered as idyllically happy, calm and prosperous, as in “halcyon days”. It is almost always tinged with nostalgia.",
+    parts: [["halkyōn", "kingfisher (Greek)"]],
+    lineage: [
+      ["Ancient Greek", "alkyōn → halkyōn", "kingfisher"],
+      ["Latin", "halcyon", ""],
+      ["English, late 14th c.", "halcyon", "a mythical bird"],
+    ],
+    history: [
+      ["Greek myth", "Alcyone is turned into a kingfisher, and the winds are calmed for seven days on either side of the winter solstice so she can nest on the sea: the “halcyon days”."],
+      ["1540s", "“Halcyon days” in English means calm winter weather."],
+      ["c.1591", "Shakespeare uses it figuratively in Henry VI, Part 1, and it later comes to mean a golden past."],
+    ],
+  },
+  mellifluous: {
+    detail: "Mellifluous describes a sound, especially a voice or music, that is sweet, smooth and pleasant to hear, as if flowing like honey.",
+    parts: [["mel (mellis)", "honey (Latin)"], ["flu- (fluere)", "to flow"], ["-ous", "full of"]],
+    lineage: [
+      ["Latin", "mel + fluere", "honey + to flow"],
+      ["Late Latin", "mellifluus", "flowing with honey"],
+      ["English, 15th c.", "mellifluous", ""],
+    ],
+    history: [
+      ["12th century", "St Bernard of Clairvaux is called Doctor Mellifluus, the honey-sweet teacher, for his eloquence."],
+      ["15th century", "Enters English to describe sweet speech and verse."],
+      ["Modern", "A favourite of critics praising singers and narrators."],
+    ],
+  },
+  cacophony: {
+    detail: "Cacophony is a harsh, jarring mix of sounds, such as traffic, shouting or an orchestra tuning up. It is also used figuratively for a clash of opinions or colours.",
+    parts: [["kakos", "bad (Greek)"], ["phōnē", "sound, voice"], ["-y", "noun ending"]],
+    lineage: [
+      ["Ancient Greek", "kakophōnia", "bad sound"],
+      ["French", "cacophonie", ""],
+      ["English, 1650s", "cacophony", ""],
+    ],
+    history: [
+      ["1650s", "First used in grammar and rhetoric for ugly-sounding combinations of words."],
+      ["18th century", "Extended to discordant music and noise."],
+      ["Opposite", "Euphony (“good sound”). Its relatives include phonetics, telephone and symphony."],
+    ],
+  },
+  epiphany: {
+    detail: "An epiphany is a sudden, illuminating moment of insight when something suddenly makes sense. With a capital E, it is the Christian feast on 6 January.",
+    parts: [["epi-", "upon, forth"], ["phan- (phainein)", "to show, appear"], ["-y", "noun ending"]],
+    lineage: [
+      ["Ancient Greek", "epiphaneia", "manifestation, appearance"],
+      ["Church Latin", "epiphania", ""],
+      ["Old French", "epiphanie", ""],
+      ["English, c.1200", "Epiphany", "the feast"],
+    ],
+    history: [
+      ["Antiquity", "Used for the appearance of a god before mortals."],
+      ["c.1200", "In English it names the feast celebrating the Magi's visit to the infant Jesus."],
+      ["1900s", "James Joyce popularises “epiphany” as a sudden moment of insight in literature, and the everyday meaning follows."],
+    ],
+  },
+  juxtapose: {
+    detail: "To juxtapose is to place two things side by side, usually so that their differences or unexpected similarities stand out. It is a key technique in art, photography, writing and design.",
+    parts: [["juxta", "next to, near (Latin)"], ["pose", "to place (French poser)"]],
+    lineage: [
+      ["Latin", "juxta", "close by"],
+      ["French", "juxtaposer", "to place side by side"],
+      ["English, 1660s", "juxtaposition", ""],
+      ["English, 1850s", "juxtapose", "back-formed verb"],
+    ],
+    history: [
+      ["1660s", "The noun “juxtaposition” enters English first."],
+      ["1850s", "The verb “juxtapose” is formed from it."],
+      ["1869 onward", "Lautréamont's “chance meeting of a sewing machine and an umbrella on a dissecting table” inspires the Surrealists, who make unexpected juxtaposition central to modern art."],
+    ],
+  },
+  ostentatious: {
+    detail: "Ostentatious describes a showy display of wealth, knowledge or importance designed to impress others. It almost always implies vulgarity or a lack of taste.",
+    parts: [["ob-", "in front of"], ["tend- (tendere)", "to stretch"], ["-tatious", "inclined to"]],
+    lineage: [
+      ["Latin", "ostendere", "to stretch out before, show"],
+      ["Latin", "ostentare", "to display, show off"],
+      ["English, mid-15th c.", "ostentation", ""],
+      ["English, 1660s", "ostentatious", ""],
+    ],
+    history: [
+      ["1400s", "“Ostentation” enters English, often in sermons against vanity."],
+      ["1660s", "The adjective appears during the lavish Restoration period."],
+      ["1899", "Thorstein Veblen coins “conspicuous consumption”, an economic theory of ostentation."],
+    ],
+  },
+  procrastinate: {
+    detail: "To procrastinate is to keep putting off something you should do, often choosing easier or more pleasant tasks instead. It is usually tied to avoiding discomfort rather than simple laziness.",
+    parts: [["pro-", "forward"], ["crastinus", "belonging to tomorrow (cras = tomorrow)"], ["-ate", "verb ending"]],
+    lineage: [
+      ["Latin", "cras → crastinus", "tomorrow → of tomorrow"],
+      ["Latin", "procrastinare", "to put off till tomorrow"],
+      ["English, 1580s", "procrastinate", ""],
+    ],
+    history: [
+      ["1st c. BC", "Cicero, in the Philippics, condemns slowness and procrastination in public affairs."],
+      ["1742", "Edward Young writes “Procrastination is the thief of time” in Night Thoughts."],
+      ["21st century", "A major subject of psychology research on self-control."],
+    ],
+  },
+  reticent: {
+    detail: "Reticent describes someone who holds back from sharing their thoughts or feelings. It is now also often used to mean reluctant, though some usage guides object.",
+    parts: [["re-", "intensive: thoroughly"], ["tic- (tacere)", "to be silent"], ["-ent", "doing the action"]],
+    lineage: [
+      ["Latin", "tacere", "to be silent"],
+      ["Latin", "reticere", "to keep silent"],
+      ["English, c.1600", "reticence", ""],
+      ["English, 1830s", "reticent", ""],
+    ],
+    history: [
+      ["1600s", "“Reticence” is used in rhetoric for deliberately leaving something unsaid."],
+      ["1830s", "The adjective spreads and comes to fit Victorian ideals of reserve."],
+      ["Relatives", "Tacit (“unspoken”) and taciturn (“habitually silent”)."],
+    ],
+  },
+  superfluous: {
+    detail: "Superfluous describes something beyond what is needed, so extra that it adds nothing and may get in the way.",
+    parts: [["super-", "over, above"], ["flu- (fluere)", "to flow"], ["-ous", "full of"]],
+    lineage: [
+      ["Latin", "superfluere", "to overflow"],
+      ["Latin", "superfluus", "overflowing"],
+      ["English, early 15th c.", "superfluous", ""],
+    ],
+    history: [
+      ["1400s", "Used in moral writing against excess and luxury."],
+      ["1918", "Strunk's The Elements of Style gives the famous advice: “Omit needless words.”"],
+      ["Relatives", "Fluid, fluent, influence and affluent."],
+    ],
+  },
+  verbose: {
+    detail: "Verbose describes speech or writing that uses more words than needed, making it long-winded and harder to follow. It is a criticism of style rather than content.",
+    parts: [["verb- (verbum)", "word (Latin)"], ["-ose", "full of"]],
+    lineage: [
+      ["Latin", "verbum", "word"],
+      ["Latin", "verbosus", "wordy"],
+      ["English, 1670s", "verbose", ""],
+    ],
+    history: [
+      ["1657", "Blaise Pascal apologises in a letter: “I have made this longer than usual because I have not had time to make it shorter.”"],
+      ["1670s", "“Verbose” enters English, after “verbosity” (1540s)."],
+      ["Computing", "A “verbose mode” prints extra detail, a rare case of wordiness being useful."],
+    ],
+  },
+  wanderlust: {
+    detail: "Wanderlust is a strong, restless urge to travel and explore the world. It suggests a love of the journey itself, not just reaching a destination.",
+    parts: [["wandern", "to hike, roam (German)"], ["Lust", "desire, joy (German)"]],
+    lineage: [
+      ["Proto-Germanic", "*wandrōjan, *lustuz", "to wander, desire"],
+      ["German", "Wanderlust", ""],
+      ["English, 1900s", "wanderlust", "borrowed directly"],
+    ],
+    history: [
+      ["Medieval–1800s", "German journeymen spend years travelling between towns (the Wanderjahre) to learn their trade."],
+      ["1823", "Schubert's song cycle Die schöne Müllerin opens with “Das Wandern”, a hymn to roaming."],
+      ["1902", "Borrowed into English. Its English cousins are “wander” and “lust”, whose old meaning was simply “desire”."],
+    ],
+  },
+  ameliorate: {
+    detail: "To ameliorate is to make a bad or difficult situation better, or more bearable. It often implies partial improvement rather than a complete fix.",
+    parts: [["a- (ad-)", "to, toward"], ["melior", "better (Latin)"], ["-ate", "verb ending"]],
+    lineage: [
+      ["Latin", "melior → meliorare", "better → to improve"],
+      ["Old French", "ameillorer", ""],
+      ["French", "améliorer", ""],
+      ["English, 1760s", "ameliorate", ""],
+    ],
+    history: [
+      ["1500s", "English uses the simpler “meliorate”."],
+      ["1767", "“Ameliorate” appears, shaped by French améliorer, during an age of reform."],
+      ["19th century", "George Eliot uses “meliorism” for the belief that the world can be made better by human effort."],
+    ],
+  },
+  anomaly: {
+    detail: "An anomaly is something that departs from what is normal, expected or standard. In science, anomalies are the puzzling results that can overturn old theories.",
+    parts: [["an-", "not"], ["homalos", "even, level (Greek)"], ["-y", "noun ending"]],
+    lineage: [
+      ["Ancient Greek", "anōmalos", "uneven, irregular"],
+      ["Greek", "anōmalia", "unevenness"],
+      ["Latin", "anomalia", ""],
+      ["English, 1570s", "anomaly", ""],
+    ],
+    history: [
+      ["Antiquity", "Greek grammarians debate “analogy” (regular forms) against “anomaly” (irregular ones)."],
+      ["1600s", "Kepler uses “anomaly” for angles describing a planet's position in its orbit, a meaning still used today."],
+      ["Note", "It is often wrongly linked to Greek nomos (“law”). The real root is homalos, “even”."],
+    ],
+  },
+  cogent: {
+    detail: "Cogent describes an argument or reason that is clear, logical and convincing, so strong that it compels agreement.",
+    parts: [["co-", "together"], ["ag- (agere)", "to drive"], ["-ent", "doing the action"]],
+    lineage: [
+      ["Latin", "cogere (co- + agere)", "to drive together, compel"],
+      ["Latin", "cogens", "compelling"],
+      ["English, 1650s", "cogent", ""],
+    ],
+    history: [
+      ["1650s", "Used of forces and reasons that compel."],
+      ["18th century", "Becomes a standard term of praise in law, philosophy and debate."],
+      ["Relatives", "Coagulate (“driven together”) comes from the same Latin verb."],
+    ],
+  },
+  diligent: {
+    detail: "Diligent describes steady, careful and conscientious effort over time. It is the hard-working attention that makes sure a job is done properly.",
+    parts: [["di- (dis-)", "apart"], ["lig- (legere)", "to choose, pick"], ["-ent", "doing the action"]],
+    lineage: [
+      ["Latin", "diligere", "to single out, value, love"],
+      ["Latin", "diligens", "attentive, careful"],
+      ["Old French", "diligent", ""],
+      ["English, mid-14th c.", "diligent", ""],
+    ],
+    history: [
+      ["Latin", "Originally implied loving care: you take pains over what you value."],
+      ["15th century", "Lawyers use “due diligence” to mean appropriate care."],
+      ["1933", "The US Securities Act makes “due diligence” a standard term in finance."],
+    ],
+  },
+  empathy: {
+    detail: "Empathy is the ability to imaginatively step into someone else's experience and feel what they feel. It differs from sympathy, which is feeling for someone rather than with them.",
+    parts: [["em- (en-)", "in"], ["path- (pathos)", "feeling, suffering"], ["-y", "noun ending"]],
+    lineage: [
+      ["Ancient Greek", "empatheia", "passion, strong feeling"],
+      ["German, 1873", "Einfühlung", "“feeling into”, an idea from aesthetics"],
+      ["English, 1908–09", "empathy", "coined by Edward Titchener"],
+    ],
+    history: [
+      ["1873", "German philosopher Robert Vischer uses Einfühlung for projecting feeling into art. Theodor Lipps develops the idea."],
+      ["1908–09", "Psychologist Edward Titchener renders it in English as “empathy”."],
+      ["Late 20th c.", "Becomes central to psychology, medicine and everyday talk about relationships."],
+    ],
+  },
+  frugal: {
+    detail: "Frugal describes being careful and economical with money and resources and avoiding waste. It suggests thoughtful thrift, not stinginess.",
+    parts: [["frug- (frux)", "fruit, produce, value"], ["-al", "relating to"]],
+    lineage: [
+      ["Latin", "frux, frugis", "fruit, produce"],
+      ["Latin", "frugalis", "economical, worthy"],
+      ["English, 16th c.", "frugal", ""],
+    ],
+    history: [
+      ["Ancient Rome", "Frugi meant “useful, honest, thrifty”, the virtues of a good farmer."],
+      ["1700s", "Benjamin Franklin lists Frugality among his thirteen virtues."],
+      ["Relatives", "Fruit, fructose and fruition."],
+    ],
+  },
+  hubris: {
+    detail: "Hubris is excessive pride or arrogant self-confidence, especially the kind that ignores limits and invites disaster. It is the classic tragic flaw.",
+    parts: [["hybris", "outrage, insolence (Greek)"]],
+    lineage: [
+      ["Ancient Greek", "hybris", "wanton violence, arrogance"],
+      ["English, 1880s", "hubris", "academic borrowing"],
+    ],
+    history: [
+      ["Classical Athens", "Hybris was a crime: violence or abuse meant to humiliate the victim."],
+      ["Greek tragedy", "Human arrogance toward the gods invites nemesis, divine retribution."],
+      ["1880s", "Scholars bring the word into English, and it is now common in politics and business."],
+    ],
+  },
+  idyllic: {
+    detail: "Idyllic describes a scene or time that is perfectly peaceful, happy and picturesque, like a painting of an ideal countryside.",
+    parts: [["eidos", "form, picture (Greek)"], ["-yllion", "little (diminutive)"], ["-ic", "like"]],
+    lineage: [
+      ["Ancient Greek", "eidyllion", "a little picture, a short poem"],
+      ["Latin", "idyllium", ""],
+      ["English, 1610s", "idyll", ""],
+      ["English, 1850s", "idyllic", ""],
+    ],
+    history: [
+      ["3rd c. BC", "Theocritus writes his Idylls, short poems of shepherds' lives."],
+      ["1859–1885", "Tennyson's Idylls of the King retells the Arthurian legends."],
+      ["1850s", "“Idyllic” comes to mean any blissfully peaceful scene."],
+    ],
+  },
+  jubilant: {
+    detail: "Jubilant describes triumphant, overflowing joy, usually openly expressed through cheering or celebration after a victory or good news.",
+    parts: [["jubil- (jubilare)", "to shout for joy"], ["-ant", "doing the action"]],
+    lineage: [
+      ["Latin", "jubilum", "a wild shout"],
+      ["Latin", "jubilare", "to shout for joy"],
+      ["English, 1660s", "jubilant", ""],
+    ],
+    history: [
+      ["Latin", "Jubilum was a herdsman's cry, and in church Latin a joyful chant."],
+      ["1667", "Milton uses “jubilant” in Paradise Lost."],
+      ["Note", "Jubilee comes from Hebrew yōbēl (“ram's horn”), but the two words became associated."],
+    ],
+  },
+  kinetic: {
+    detail: "Kinetic describes motion: energy, forces or art involving movement. Used of people, it suggests restless, dynamic energy.",
+    parts: [["kin- (kinein)", "to move (Greek)"], ["-etic", "relating to"]],
+    lineage: [
+      ["Ancient Greek", "kinein", "to move"],
+      ["Greek", "kinētikos", "of motion"],
+      ["English, 1840s–60s", "kinetic", ""],
+    ],
+    history: [
+      ["1850s–60s", "Lord Kelvin and Peter Tait popularise the term “kinetic energy”."],
+      ["1920", "Naum Gabo creates Kinetic Construction, and kinetic art, with Calder's mobiles, follows."],
+      ["Relatives", "Cinema (from kinēma, “movement”) and telekinesis."],
+    ],
+  },
+  luminous: {
+    detail: "Luminous describes something that gives off light or glows softly. Figuratively it can mean brilliantly clear or radiant, as in a luminous performance or face.",
+    parts: [["lumin- (lumen)", "light (Latin)"], ["-ous", "full of"]],
+    lineage: [
+      ["Latin", "lumen, luminis", "light"],
+      ["Latin", "luminosus", "full of light"],
+      ["English, early 15th c.", "luminous", ""],
+    ],
+    history: [
+      ["1400s", "Describes heavenly bodies and light sources."],
+      ["1910s–20s", "Radium “luminous paint” on watch dials poisons factory workers, the “Radium Girls”."],
+      ["Relatives", "Illuminate and luminary (“a shining light”)."],
+    ],
+  },
+  nebulous: {
+    detail: "Nebulous describes ideas or plans that are vague, hazy and not clearly defined. Literally it means cloudy or misty.",
+    parts: [["nebula", "mist, cloud (Latin)"], ["-ous", "full of"]],
+    lineage: [
+      ["Proto-Indo-European", "*nebh-", "cloud"],
+      ["Latin", "nebula → nebulosus", "mist → misty"],
+      ["English, late 14th c.", "nebulous", "cloudy"],
+    ],
+    history: [
+      ["1300s", "Literally “cloudy” or “foggy”."],
+      ["1700s", "Astronomers catalogue fuzzy “nebulae”, notably in Charles Messier's catalogue of 1774."],
+      ["1830s", "“Vague, indistinct” becomes the usual meaning. Cousins include German Nebel (“fog”) and Greek nephos (“cloud”)."],
+    ],
+  },
+  opulent: {
+    detail: "Opulent describes rich, lavish luxury, with no expense spared. It is used of decor, lifestyles and even rich flavours or sounds.",
+    parts: [["op- (ops)", "wealth, power, resources"], ["-ulent", "full of"]],
+    lineage: [
+      ["Latin", "ops, opis", "wealth, power"],
+      ["Latin", "opulentus", "rich"],
+      ["English, c.1600", "opulent", ""],
+    ],
+    history: [
+      ["Ancient Rome", "Ops was the goddess of plenty and the harvest."],
+      ["1600s", "Used of wealthy nations and patrons."],
+      ["Relatives", "Copious and copy come from copia (co- + ops), “abundance”."],
+    ],
+  },
+  perennial: {
+    detail: "Perennial describes something that lasts or keeps recurring year after year: a perennial favourite or problem. In gardening, a perennial plant lives for more than two years.",
+    parts: [["per-", "through"], ["enn- (annus)", "year"], ["-ial", "relating to"]],
+    lineage: [
+      ["Latin", "per + annus", "through + year"],
+      ["Latin", "perennis", "lasting the whole year"],
+      ["English, 1640s", "perennial", ""],
+    ],
+    history: [
+      ["1640s", "Means “lasting all year”, like an evergreen."],
+      ["1670s", "Botanists use it for plants that live for many years."],
+      ["1945", "Aldous Huxley's The Perennial Philosophy popularises Leibniz's idea of timeless truths."],
+    ],
+  },
+  quintessential: {
+    detail: "Quintessential describes the purest, most perfect example of a type, one that captures the essence of a thing.",
+    parts: [["quinta", "fifth (Latin)"], ["essentia", "essence, being"], ["-al", "relating to"]],
+    lineage: [
+      ["Ancient Greek", "pemptē ousia", "fifth substance (aether)"],
+      ["Medieval Latin", "quinta essentia", "fifth essence"],
+      ["English, early 15th c.", "quintessence", ""],
+      ["English, 1900s", "quintessential", ""],
+    ],
+    history: [
+      ["Aristotle", "Adds a fifth element, aether, to earth, water, air and fire, as the pure stuff of the heavens."],
+      ["Middle Ages", "Alchemists try to distil the “quintessence” from substances. Hamlet calls man “this quintessence of dust”."],
+      ["1900s", "The adjective “quintessential” spreads in its modern sense of “the most typical”."],
+    ],
+  },
+  ruminate: {
+    detail: "To ruminate is to think deeply and at length about something, turning it over and over. In psychology it can mean unhealthy, repetitive brooding.",
+    parts: [["rumin- (rumen)", "throat, first stomach"], ["-ate", "verb ending"]],
+    lineage: [
+      ["Latin", "rumen", "gullet"],
+      ["Latin", "ruminari", "to chew the cud"],
+      ["English, 1530s", "ruminate", ""],
+    ],
+    history: [
+      ["1530s", "Used both literally (cattle chewing cud) and figuratively, as thought is “chewed over” again and again."],
+      ["Zoology", "Cows, sheep and deer are “ruminants”."],
+      ["Modern psychology", "“Rumination” describes repetitive negative thinking linked to anxiety and depression."],
+    ],
+  },
+  solace: {
+    detail: "Solace is comfort or consolation in a time of sorrow or distress, and also the thing that provides it, such as music, a friend or nature.",
+    parts: [["sol- (solari)", "to comfort"], ["-ace", "noun ending"]],
+    lineage: [
+      ["Latin", "solari", "to console"],
+      ["Latin", "solacium", "comfort"],
+      ["Old French", "solaz", "pleasure, comfort"],
+      ["Middle English, c.1300", "solas", ""],
+    ],
+    history: [
+      ["c.524", "Boethius writes The Consolation of Philosophy (con- + solari), one of the most influential medieval books."],
+      ["Middle English", "“Solas” can also mean entertainment or pleasure."],
+      ["Note", "It is not related to sol (“sun”) or solus (“alone”), although it is often assumed to be."],
+    ],
+  },
+  trepidation: {
+    detail: "Trepidation is nervous fear or apprehension about something that is about to happen, the uneasy feeling before an exam, a speech or bad news.",
+    parts: [["trepid- (trepidus)", "alarmed, trembling"], ["-ation", "noun of action or state"]],
+    lineage: [
+      ["Latin", "trepidus", "alarmed, agitated"],
+      ["Latin", "trepidare → trepidatio", "to tremble → trembling"],
+      ["English, c.1600", "trepidation", "trembling"],
+    ],
+    history: [
+      ["Medieval astronomy", "“Trepidation of the spheres” was a theory that the equinoxes wobbled back and forth."],
+      ["c.1611", "John Donne uses that phrase in “A Valediction: Forbidding Mourning”."],
+      ["Relatives", "Intrepid means “not trembling”, or fearless."],
+    ],
+  },
+  unfathomable: {
+    detail: "Unfathomable describes something too deep, vast or complex to measure or understand fully, such as the ocean's depths, a mystery or someone's motives.",
+    parts: [["un-", "not"], ["fathom", "measure the depth of"], ["-able", "able to be"]],
+    lineage: [
+      ["Proto-Germanic", "*fathmaz", "outstretched arms"],
+      ["Old English", "fæðm", "embrace, arm-span"],
+      ["English", "fathom", "a 6-foot depth unit, then “to understand”"],
+      ["English, 1640s", "unfathomable", ""],
+    ],
+    history: [
+      ["Old English", "Fæðm meant the span of outstretched arms, about six feet."],
+      ["Age of Sail", "Sailors measure depth in fathoms with a weighted sounding line."],
+      ["1600s", "“To fathom” comes to mean to understand, and water too deep to sound becomes “unfathomable”."],
+    ],
+  },
+  vivacious: {
+    detail: "Vivacious describes someone who is lively, spirited and full of life, with an animated, sparkling energy that draws people in.",
+    parts: [["viv- (vivere)", "to live"], ["-acious", "inclined to, full of"]],
+    lineage: [
+      ["Latin", "vivere", "to live"],
+      ["Latin", "vivax", "long-lived, lively"],
+      ["English, 1640s", "vivacious", ""],
+    ],
+    history: [
+      ["1640s", "First meant “long-lived” or “hard to kill”."],
+      ["Late 1600s", "Shifts to “lively and animated” in manner."],
+      ["Relatives", "Vivid, revive, survive and vivarium."],
+    ],
+  },
+  whimsical: {
+    detail: "Whimsical describes playful, fanciful quirkiness, delightful because it is unexpected. It can also mean acting on sudden impulses.",
+    parts: [["whimsy", "a fanciful notion"], ["-ical", "having the quality of"]],
+    lineage: [
+      ["Possibly Scandinavian", "kvima?", "to flutter about"],
+      ["English, 1500s", "whim-wham", "a fanciful trifle"],
+      ["English, 1600s", "whim / whimsy", ""],
+      ["English, 1650s", "whimsical", ""],
+    ],
+    history: [
+      ["1500s", "“Whim-wham” means a trinket or a fanciful notion. Its origin is uncertain."],
+      ["1650s", "“Whimsical” describes changeable, capricious people."],
+      ["Victorian era", "Edward Lear and Lewis Carroll make whimsy a celebrated literary style."],
+    ],
+  },
+  zenith: {
+    detail: "The zenith is the point in the sky directly overhead. Figuratively it means the peak of success, power or achievement.",
+    parts: [["samt", "path, direction (Arabic)"], ["(ar-ra's)", "of the head"]],
+    lineage: [
+      ["Arabic", "samt ar-ra's", "path over the head"],
+      ["Medieval Latin", "cenit", "scribal misreading of “samt”"],
+      ["Old French", "cenith", ""],
+      ["English, late 14th c.", "zenith", ""],
+    ],
+    history: [
+      ["Medieval period", "Latin translations of Arabic astronomy turn “samt” into “cenit”, probably by misreading the letters."],
+      ["1391", "Chaucer uses it in his Treatise on the Astrolabe."],
+      ["1610s", "The figurative sense “highest point” appears. “Azimuth” comes from the same Arabic word, samt."],
+    ],
+  },
+  alacrity: {
+    detail: "Alacrity is brisk, cheerful eagerness: doing something promptly and willingly, without hesitation.",
+    parts: [["alacr- (alacer)", "lively, brisk"], ["-ity", "state or quality"]],
+    lineage: [
+      ["Latin", "alacer", "lively, eager"],
+      ["Latin", "alacritas", "liveliness"],
+      ["English, mid-15th c.", "alacrity", ""],
+    ],
+    history: [
+      ["1400s", "Enters English describing eager readiness, often for battle or service."],
+      ["Shakespeare", "Used in Richard III and other plays."],
+      ["Musical cousin", "Italian allegro (“brisk, cheerful”) comes from the same Latin root."],
+    ],
+  },
+  bucolic: {
+    detail: "Bucolic describes the charming, peaceful aspects of country life: fields, farms and grazing animals. It can also refer to pastoral poetry.",
+    parts: [["bous", "ox, cow (Greek)"], ["-kolos", "tending"], ["-ic", "relating to"]],
+    lineage: [
+      ["Ancient Greek", "boukolos", "cowherd"],
+      ["Greek", "boukolikos", "pastoral"],
+      ["Latin", "bucolicus", ""],
+      ["English, 16th c.", "bucolic", ""],
+    ],
+    history: [
+      ["3rd c. BC", "Theocritus writes poems about herdsmen."],
+      ["c.39 BC", "Virgil's Eclogues, also called the Bucolics, define the pastoral tradition."],
+      ["Modern", "Often used with gentle irony for rural idylls, as in “a bucolic weekend in the country”."],
+    ],
+  },
+  clandestine: {
+    detail: "Clandestine describes something kept secret or done covertly, often because it is illicit or forbidden: clandestine meetings, affairs or operations.",
+    parts: [["clam", "secretly (Latin)"], ["-destinus", "adjective-forming ending"]],
+    lineage: [
+      ["Latin", "clam", "in secret"],
+      ["Latin", "clandestinus", "secret, hidden"],
+      ["French", "clandestin", ""],
+      ["English, 1560s", "clandestine", ""],
+    ],
+    history: [
+      ["1563", "The Council of Trent's decree Tametsi targets “clandestine marriages” performed without witnesses or banns."],
+      ["1753", "England's Marriage Act (Lord Hardwicke's Act) ends clandestine weddings in England."],
+      ["20th century", "A staple of espionage: “clandestine operations”."],
+    ],
+  },
+  dichotomy: {
+    detail: "A dichotomy is a sharp division into two opposed or contrasting parts, such as mind and body or theory and practice. People often warn against “false dichotomies” that oversimplify.",
+    parts: [["dicho-", "in two (Greek)"], ["tom- (temnein)", "to cut"], ["-y", "noun ending"]],
+    lineage: [
+      ["Ancient Greek", "dikhotomia", "a cutting in two"],
+      ["Modern Latin", "dichotomia", ""],
+      ["English, 1610s", "dichotomy", ""],
+    ],
+    history: [
+      ["1610s", "A term in logic for dividing a class into two opposed sub-classes."],
+      ["Science", "Used in botany for forked branching, and in astronomy for the half-lit phase of the Moon."],
+      ["Relatives", "Atom (“uncuttable”), anatomy and tome share the root “cut”."],
+    ],
+  },
+  enigma: {
+    detail: "An enigma is a person, thing or situation that is mysterious, puzzling and hard to understand or explain.",
+    parts: [["ainigma", "riddle (Greek)"]],
+    lineage: [
+      ["Ancient Greek", "ainos → ainissesthai", "fable → to speak in riddles"],
+      ["Greek", "ainigma", "riddle"],
+      ["Latin", "aenigma", ""],
+      ["English, 1530s", "enigma", ""],
+    ],
+    history: [
+      ["Antiquity", "The Sphinx's riddle to Oedipus is the archetypal ainigma."],
+      ["1899", "Elgar composes his Enigma Variations, with a hidden theme never revealed."],
+      ["1939–45", "Churchill calls Russia “a riddle wrapped in a mystery inside an enigma”, and Allied codebreakers crack the German Enigma machine."],
+    ],
+  },
+  fortuitous: {
+    detail: "Fortuitous strictly means happening by chance rather than design. In modern use it usually means a lucky chance, a sense some style guides still resist.",
+    parts: [["fort- (fors)", "chance, luck"], ["-uitous", "having the quality of"]],
+    lineage: [
+      ["Latin", "fors, fortis", "chance"],
+      ["Latin", "fortuitus", "happening by chance"],
+      ["English, 1650s", "fortuitous", ""],
+    ],
+    history: [
+      ["Ancient Rome", "Fors Fortuna was the goddess of chance and luck."],
+      ["1650s", "Enters English in philosophical debates about chance versus providence."],
+      ["20th century", "Blends with “fortunate” to mean “lucky”, a usage now widely accepted."],
+    ],
+  },
+  gratitude: {
+    detail: "Gratitude is the feeling of being thankful and wanting to return kindness. Modern psychology links practising gratitude to greater wellbeing.",
+    parts: [["grat- (gratus)", "pleasing, thankful"], ["-itude", "state or quality"]],
+    lineage: [
+      ["Latin", "gratus", "pleasing, thankful"],
+      ["Medieval Latin", "gratitudo", ""],
+      ["French", "gratitude", ""],
+      ["English, mid-15th c.", "gratitude", ""],
+    ],
+    history: [
+      ["54 BC", "Cicero calls gratitude “not only the greatest of the virtues but the parent of all the others” (Pro Plancio)."],
+      ["1400s", "Enters English, replacing older words such as “thankfulness” in formal use."],
+      ["Relatives", "Grace, gratis, grateful and congratulate."],
+    ],
+  },
+  harbinger: {
+    detail: "A harbinger is a person or thing that signals that something else is coming, as in “a harbinger of spring”. It can announce good or bad things.",
+    parts: [["heri", "army (Frankish)"], ["berga", "shelter"], ["-er", "one who does"]],
+    lineage: [
+      ["Frankish", "*heriberga", "army shelter"],
+      ["Old French", "herberge → herbergere", "lodging → provider of lodging"],
+      ["Middle English", "herbergeour", ""],
+      ["English, 15th c.", "harbinger", "with an added “n”"],
+    ],
+    history: [
+      ["Middle Ages", "A harbinger rode ahead of a royal party or army to arrange lodgings."],
+      ["1400s", "An “n” slips in, as it did in messenger and passenger."],
+      ["1570s", "Comes to mean any forerunner or omen. “Harbour” is a close relative."],
+    ],
+  },
+  impeccable: {
+    detail: "Impeccable means flawless, meeting the highest standards. It is used of manners, taste, timing and records.",
+    parts: [["im- (in-)", "not"], ["pecc- (peccare)", "to sin"], ["-able", "able to"]],
+    lineage: [
+      ["Latin", "peccare", "to sin, err"],
+      ["Latin", "impeccabilis", "not liable to sin"],
+      ["English, 1530s", "impeccable", "incapable of sin"],
+    ],
+    history: [
+      ["1530s", "A theological term: incapable of sinning."],
+      ["1610s", "Broadens to “faultless” in any respect."],
+      ["Relatives", "Peccadillo (“a little sin”) and peccavi (“I have sinned”)."],
+    ],
+  },
+  labyrinth: {
+    detail: "A labyrinth is a complex network of winding paths in which it is easy to get lost. Figuratively it is any intricate, confusing system, from bureaucracy to the inner ear.",
+    parts: [["labyrinthos", "maze (Greek, pre-Greek origin)"]],
+    lineage: [
+      ["Pre-Greek (uncertain)", "labrys?", "double axe, a Minoan symbol (debated)"],
+      ["Ancient Greek", "labyrinthos", "maze"],
+      ["Latin", "labyrinthus", ""],
+      ["English, late 14th c.", "laberinthe → labyrinth", ""],
+    ],
+    history: [
+      ["Greek myth", "Daedalus builds the Labyrinth on Crete for King Minos to hold the Minotaur. Theseus escapes it using Ariadne's thread."],
+      ["c.1200", "Chartres Cathedral's floor labyrinth is laid for meditative walking."],
+      ["Anatomy", "The inner ear's winding canals are called the “labyrinth”."],
+    ],
+  },
+  magnanimous: {
+    detail: "Magnanimous describes being generous and forgiving, especially toward a rival or someone less powerful. It means rising above petty resentment.",
+    parts: [["magn- (magnus)", "great"], ["anim- (animus)", "soul, mind"], ["-ous", "full of"]],
+    lineage: [
+      ["Ancient Greek", "megalopsychos", "great-souled"],
+      ["Latin", "magnanimus", "great-souled (a translation of the Greek)"],
+      ["English, 1580s", "magnanimous", ""],
+    ],
+    history: [
+      ["4th c. BC", "Aristotle's Nicomachean Ethics praises megalopsychia, greatness of soul, as the crown of the virtues."],
+      ["1580s", "Enters English, first meaning courageous and high-minded."],
+      ["1940s", "Churchill's motto: “In War: Resolution… In Victory: Magnanimity.”"],
+    ],
+  },
+  nonchalant: {
+    detail: "Nonchalant describes appearing casually calm and unconcerned, sometimes genuinely relaxed and sometimes deliberately playing it cool.",
+    parts: [["non", "not"], ["chaloir", "to be concerned (French)"], ["-ant", "doing the action"]],
+    lineage: [
+      ["Latin", "calere", "to be warm"],
+      ["Old French", "chaloir", "to matter, to concern"],
+      ["French", "nonchalant", "not caring"],
+      ["English, 1730s", "nonchalant", ""],
+    ],
+    history: [
+      ["Latin", "To be “warm” about something meant to care about it, so nonchalant is literally “not heated”."],
+      ["1670s / 1730s", "English borrows first “nonchalance”, then “nonchalant”."],
+      ["Relatives", "Calorie and cauldron share the Latin root calere."],
+    ],
+  },
+  oblivious: {
+    detail: "Oblivious describes being completely unaware of what is happening around you, whether through distraction, absorption or indifference.",
+    parts: [["ob-", "over, against"], ["liv- (oblivisci)", "to forget"], ["-ious", "full of"]],
+    lineage: [
+      ["Latin", "oblivisci", "to forget"],
+      ["Latin", "obliviosus", "forgetful"],
+      ["English, mid-15th c.", "oblivious", "forgetful"],
+    ],
+    history: [
+      ["1400s", "Meant “forgetful”."],
+      ["1860s", "The modern sense “unaware” spreads, and Victorian purists initially object to it."],
+      ["Relatives", "Oblivion, the state of being forgotten."],
+    ],
+  },
+  plethora: {
+    detail: "A plethora is a large or excessive amount of something. In modern use it usually just means “plenty”, though the word once implied too much.",
+    parts: [["plēth- (plēthein)", "to be full (Greek)"], ["-ora", "noun ending"]],
+    lineage: [
+      ["Ancient Greek", "plēthōrē", "fullness"],
+      ["Medieval Latin", "plethora", ""],
+      ["English, 1540s", "plethora", "a medical term"],
+    ],
+    history: [
+      ["1540s", "Humoral medicine uses it for an excess of blood, treated by bloodletting."],
+      ["1700s", "Extended to any overabundance."],
+      ["Today", "Usually a neutral word for “a great many”."],
+    ],
+  },
+  serene: {
+    detail: "Serene describes deep calm and untroubled peace, in a person's manner or in a place, a sky or a body of water.",
+    parts: [["serenus", "clear, unclouded (Latin)"]],
+    lineage: [
+      ["Latin", "serenus", "clear, bright (of weather)"],
+      ["English, 1500s", "serene", "clear sky"],
+    ],
+    history: [
+      ["Latin", "Originally described clear, calm weather and skies."],
+      ["Royalty", "“Serene Highness” becomes a formal title, used for example by the princes of Monaco."],
+      ["Modern", "Mostly describes inner calm. “Serenity” is the noun."],
+    ],
+  },
+  tranquil: {
+    detail: "Tranquil describes a place, a mood or water that is free from disturbance, noise or agitation.",
+    parts: [["tranquillus", "quiet, calm (Latin)"]],
+    lineage: [
+      ["Latin", "tranquillus", "calm, still"],
+      ["English, late 14th c.", "tranquillity", ""],
+      ["English, early 1600s", "tranquil", ""],
+    ],
+    history: [
+      ["1651", "Riccioli names a lunar plain Mare Tranquillitatis, the Sea of Tranquillity."],
+      ["1800", "Wordsworth defines poetry as “emotion recollected in tranquillity”."],
+      ["1969", "Apollo 11 lands there: “Houston, Tranquility Base here. The Eagle has landed.”"],
+    ],
+  },
+  voracious: {
+    detail: "Voracious describes a huge, eager appetite, for food or, figuratively, for books, knowledge or experiences.",
+    parts: [["vor- (vorare)", "to devour, swallow"], ["-acious", "inclined to"]],
+    lineage: [
+      ["Latin", "vorare", "to devour"],
+      ["Latin", "vorax", "greedy, ravenous"],
+      ["English, 1630s", "voracious", ""],
+    ],
+    history: [
+      ["1630s", "Used of predators and gluttons."],
+      ["1700s", "“A voracious reader” becomes a common phrase."],
+      ["Relatives", "Devour, carnivore, herbivore and omnivore."],
+    ],
+  },
+};
+
+const els = {
+  content: document.getElementById("content"),
+  word: document.getElementById("word"),
+  pos: document.getElementById("pos"),
+  meaning: document.getElementById("meaning"),
+  example: document.getElementById("example"),
+  deep: document.getElementById("deep"),
+  detail: document.getElementById("detail"),
+  build: document.getElementById("build"),
+  lineage: document.getElementById("lineage"),
+  history: document.getElementById("history"),
+};
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
+}
+
+function renderDetails(word) {
+  const d = DETAILS[word];
+  els.deep.hidden = !d;
+  if (!d) return;
+
+  els.detail.textContent = d.detail;
+
+  // Building blocks: part + part = word
+  els.build.replaceChildren();
+  d.parts.forEach(([part, gloss], idx) => {
+    if (idx > 0) els.build.append(el("span", "op", "+"));
+    const chip = el("div", "part");
+    chip.append(el("b", null, part), el("span", null, gloss));
+    els.build.append(chip);
+  });
+  els.build.append(el("span", "op", "="), el("span", "result", word));
+
+  // Lineage: language → form → gloss
+  els.lineage.replaceChildren(...d.lineage.map(([lang, form, gloss]) => {
+    const li = el("li");
+    li.append(el("span", "tl-when", lang), el("span", "tl-form", form));
+    if (gloss) li.append(el("span", "tl-gloss", ` — ${gloss}`));
+    return li;
+  }));
+
+  // Historical usage
+  els.history.replaceChildren(...d.history.map(([when, text]) => {
+    const li = el("li");
+    li.append(el("span", "tl-when", when), el("span", "tl-text", text));
+    return li;
+  }));
+}
+
+let lastIndex = -1;
+
+function showRandomWord() {
+  let i;
+  do {
+    i = Math.floor(Math.random() * WORDS.length);
+  } while (i === lastIndex && WORDS.length > 1);
+  lastIndex = i;
+
+  const [word, pos, meaning, example] = WORDS[i];
+  els.word.textContent = word;
+  els.pos.textContent = pos;
+  els.meaning.textContent = meaning;
+  els.example.textContent = `“${example}”`;
+  renderDetails(word);
+
+  els.content.classList.remove("fade");
+  void els.content.offsetWidth; // restart animation
+  els.content.classList.add("fade");
+}
+
+const speakBtn = document.getElementById("speak");
+
+function pickEnglishVoice() {
+  const voices = speechSynthesis.getVoices();
+  return (
+    voices.find(v => v.lang === "en-US" && v.localService) ||
+    voices.find(v => v.lang && v.lang.startsWith("en")) ||
+    null
+  );
+}
+
+function speakWord() {
+  const word = els.word.textContent;
+  if (!word) return;
+  speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(word);
+  utterance.lang = "en-US";
+  utterance.rate = 0.5; // slow, for learning pronunciation
+  const voice = pickEnglishVoice();
+  if (voice) utterance.voice = voice;
+
+  utterance.onstart = () => speakBtn.classList.add("speaking");
+  utterance.onend = utterance.onerror = () => speakBtn.classList.remove("speaking");
+  speechSynthesis.speak(utterance);
+}
+
+if ("speechSynthesis" in window) {
+  speakBtn.addEventListener("click", speakWord);
+  speechSynthesis.getVoices(); // some browsers load voices lazily
+} else {
+  speakBtn.disabled = true;
+  speakBtn.title = "Speech is not supported in this browser";
+}
+
+document.getElementById("refresh").addEventListener("click", () => {
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  showRandomWord();
+});
+showRandomWord();
+</script>
+</body>
+</html>
